@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
 	"webp_server_go/config"
 
 	log "github.com/sirupsen/logrus"
@@ -44,7 +45,6 @@ func clearDirForOldestFiles(path string) error {
 		}
 		return nil
 	})
-
 	if err != nil {
 		log.Errorf("Error traversing directory: %s\n", err.Error())
 		return err

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"webp_server_go/config"
 	"webp_server_go/helper"
 
@@ -99,13 +100,13 @@ func ConvertFilter(rawPath, jxlPath, avifPath, webpPath string, extraParams conf
 
 func convertImage(rawPath, optimizedPath, imageType string, extraParams config.ExtraParams) error {
 	// we need to create dir first
-	var err = os.MkdirAll(path.Dir(optimizedPath), 0755)
+	err := os.MkdirAll(path.Dir(optimizedPath), 0o755)
 	if err != nil {
 		log.Error(err.Error())
 	}
 	// If original image is NEF, convert NEF image to JPG first
 	if strings.HasSuffix(strings.ToLower(rawPath), ".nef") {
-		var convertedRaw, converted = ConvertRawToJPG(rawPath, optimizedPath)
+		convertedRaw, converted := ConvertRawToJPG(rawPath, optimizedPath)
 		// If converted, use converted file as raw
 		if converted {
 			// Use converted file(JPG) as raw input for further conversion
@@ -181,7 +182,7 @@ func jxlEncoder(img *vips.ImageRef, rawPath string, optimizedPath string) error 
 		return err
 	}
 
-	if err := os.WriteFile(optimizedPath, buf, 0600); err != nil {
+	if err := os.WriteFile(optimizedPath, buf, 0o600); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -216,7 +217,7 @@ func avifEncoder(img *vips.ImageRef, rawPath string, optimizedPath string) error
 		return err
 	}
 
-	if err := os.WriteFile(optimizedPath, buf, 0600); err != nil {
+	if err := os.WriteFile(optimizedPath, buf, 0o600); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -251,7 +252,7 @@ func webpEncoder(img *vips.ImageRef, rawPath string, optimizedPath string) error
 		}
 		for i := range 7 {
 			ep.ReductionEffort = i
-			buf, _, err = img.ExportWebp(&ep)
+			_, _, err = img.ExportWebp(&ep)
 			if err != nil && strings.Contains(err.Error(), "unable to encode") {
 				log.Warnf("Can't encode image to WebP with ReductionEffort %d, trying higher value...", i)
 			} else if err != nil {
@@ -268,7 +269,7 @@ func webpEncoder(img *vips.ImageRef, rawPath string, optimizedPath string) error
 		return err
 	}
 
-	if err := os.WriteFile(optimizedPath, buf, 0600); err != nil {
+	if err := os.WriteFile(optimizedPath, buf, 0o600); err != nil {
 		log.Error(err)
 		return err
 	}

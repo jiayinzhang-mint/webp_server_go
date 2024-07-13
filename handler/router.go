@@ -3,14 +3,14 @@ package handler
 import (
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
+	"strconv"
 	"strings"
+
 	"webp_server_go/config"
 	"webp_server_go/encoder"
 	"webp_server_go/helper"
-
-	"path"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
@@ -117,7 +117,7 @@ func Convert(c *fiber.Ctx) error {
 	}
 
 	var rawImageAbs string
-	var metadata = config.MetaFile{}
+	metadata := config.MetaFile{}
 	if proxyMode {
 		// this is proxyMode, we'll have to use this url to download and save it to local path, which also gives us rawImageAbs
 		// https://test.webp.sh/mypic/123.jpg?someother=200&somebugs=200
@@ -143,10 +143,10 @@ func Convert(c *fiber.Ctx) error {
 
 	supportedFormats := helper.GuessSupportedFormat(reqHeader)
 	// resize itself and return if only raw(original format) is supported
-	if supportedFormats["raw"] == true &&
-		supportedFormats["webp"] == false &&
-		supportedFormats["avif"] == false &&
-		supportedFormats["jxl"] == false {
+	if supportedFormats["raw"] &&
+		!supportedFormats["webp"] &&
+		!supportedFormats["avif"] &&
+		!supportedFormats["jxl"] {
 		dest := path.Join(config.Config.ExhaustPath, targetHostName, metadata.Id)
 		if !helper.ImageExists(dest) {
 			encoder.ResizeItself(rawImageAbs, dest, extraParams)
@@ -165,10 +165,10 @@ func Convert(c *fiber.Ctx) error {
 	}
 
 	avifAbs, webpAbs, jxlAbs := helper.GenOptimizedAbsPath(metadata, targetHostName)
-	// Do the convertion based on supported formats and config
+	// Do the conversion based on supported formats and config
 	encoder.ConvertFilter(rawImageAbs, jxlAbs, avifAbs, webpAbs, extraParams, supportedFormats, nil)
 
-	var availableFiles = []string{rawImageAbs}
+	availableFiles := []string{rawImageAbs}
 	if supportedFormats["avif"] {
 		availableFiles = append(availableFiles, avifAbs)
 	}

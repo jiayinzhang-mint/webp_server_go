@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+
 	"webp_server_go/config"
 
 	log "github.com/sirupsen/logrus"
@@ -31,7 +32,7 @@ func getId(p string) (string, string, string) {
 func ReadMetadata(p, etag string, subdir string) config.MetaFile {
 	// try to read metadata, if we can't read, create one
 	var metadata config.MetaFile
-	var id, _, _ = getId(p)
+	id, _, _ := getId(p)
 
 	if buf, err := os.ReadFile(path.Join(config.Config.MetadataPath, subdir, id+".json")); err != nil {
 		// First time reading metadata, create one
@@ -49,11 +50,11 @@ func ReadMetadata(p, etag string, subdir string) config.MetaFile {
 }
 
 func WriteMetadata(p, etag string, subdir string) config.MetaFile {
-	_ = os.MkdirAll(path.Join(config.Config.MetadataPath, subdir), 0755)
+	_ = os.MkdirAll(path.Join(config.Config.MetadataPath, subdir), 0o755)
 
-	var id, filepath, sant = getId(p)
+	id, filepath, sant := getId(p)
 
-	var data = config.MetaFile{
+	data := config.MetaFile{
 		Id: id,
 	}
 
@@ -66,12 +67,12 @@ func WriteMetadata(p, etag string, subdir string) config.MetaFile {
 	}
 
 	buf, _ := json.Marshal(data)
-	_ = os.WriteFile(path.Join(config.Config.MetadataPath, subdir, data.Id+".json"), buf, 0644)
+	_ = os.WriteFile(path.Join(config.Config.MetadataPath, subdir, data.Id+".json"), buf, 0o644)
 	return data
 }
 
 func DeleteMetadata(p string, subdir string) {
-	var id, _, _ = getId(p)
+	id, _, _ := getId(p)
 	metadataPath := path.Join(config.Config.MetadataPath, subdir, id+".json")
 	err := os.Remove(metadataPath)
 	if err != nil {
