@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 	"time"
+
 	"webp_server_go/config"
 	"webp_server_go/helper"
 
@@ -18,10 +19,9 @@ import (
 )
 
 var (
-	chromeUA   = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36"
-	safariUA   = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15"
-	safari17UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15" // <- Mac with Safari 17
-	curlUA     = "curl/7.64.1"
+	chromeUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.183 Safari/537.36"
+	safariUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15"
+	curlUA   = "curl/7.64.1"
 
 	acceptWebP   = "image/webp,image/apng,image/*,*/*;q=0.8"
 	acceptAvif   = "image/avif,image/*,*/*;q=0.8"
@@ -60,7 +60,7 @@ func requestToServer(reqUrl string, app *fiber.App, ua, accept string) (*http.Re
 
 func TestServerHeaders(t *testing.T) {
 	setupParam()
-	var app = fiber.New()
+	app := fiber.New()
 	app.Use(etag.New(etag.Config{
 		Weak: true,
 	}))
@@ -89,7 +89,7 @@ func TestConvertDuplicates(t *testing.T) {
 	setupParam()
 	N := 3
 
-	var testLink = map[string]string{
+	testLink := map[string]string{
 		"http://127.0.0.1:3333/webp_server.jpg":                 "image/webp",
 		"http://127.0.0.1:3333/webp_server.bmp":                 "image/webp",
 		"http://127.0.0.1:3333/webp_server.png":                 "image/webp",
@@ -101,7 +101,7 @@ func TestConvertDuplicates(t *testing.T) {
 		"http://127.0.0.1:3333/太神啦.png":                         "image/webp",
 	}
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
 	// test Chrome
@@ -113,12 +113,12 @@ func TestConvertDuplicates(t *testing.T) {
 			assert.Equal(t, respType, contentType)
 		}
 	}
-
 }
+
 func TestConvert(t *testing.T) {
 	setupParam()
 	// TODO: old-style test, better update it with accept headers
-	var testChromeLink = map[string]string{
+	testChromeLink := map[string]string{
 		"http://127.0.0.1:3333/webp_server.jpg":                 "image/webp",
 		"http://127.0.0.1:3333/webp_server.bmp":                 "image/webp",
 		"http://127.0.0.1:3333/webp_server.png":                 "image/webp",
@@ -130,7 +130,7 @@ func TestConvert(t *testing.T) {
 		"http://127.0.0.1:3333/太神啦.png":                         "image/webp",
 	}
 
-	var testChromeAvifLink = map[string]string{
+	testChromeAvifLink := map[string]string{
 		"http://127.0.0.1:3333/webp_server.jpg":                 "image/avif",
 		"http://127.0.0.1:3333/webp_server.bmp":                 "image/avif",
 		"http://127.0.0.1:3333/webp_server.png":                 "image/avif",
@@ -142,7 +142,7 @@ func TestConvert(t *testing.T) {
 		"http://127.0.0.1:3333/太神啦.png":                         "image/avif",
 	}
 
-	var testSafariLink = map[string]string{
+	testSafariLink := map[string]string{
 		"http://127.0.0.1:3333/webp_server.jpg": "image/jpeg",
 		"http://127.0.0.1:3333/webp_server.bmp": "image/png", // png instead oft bmp because ResizeItself() uses ExportNative()
 		"http://127.0.0.1:3333/webp_server.png": "image/png",
@@ -152,7 +152,7 @@ func TestConvert(t *testing.T) {
 		"http://127.0.0.1:3333/dir1/inside.jpg": "image/jpeg",
 	}
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
 	// // test Chrome
@@ -186,7 +186,7 @@ func TestConvertNotAllowed(t *testing.T) {
 	setupParam()
 	config.Config.AllowedTypes = []string{"jpg", "png", "jpeg"}
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
 	// not allowed, but we have the file, this should return File extension not allowed
@@ -200,14 +200,13 @@ func TestConvertNotAllowed(t *testing.T) {
 	resp, data = requestToServer(url, app, chromeUA, acceptWebP)
 	defer resp.Body.Close()
 	assert.Contains(t, string(data), "File extension not allowed")
-
 }
 
 func TestConvertProxyModeBad(t *testing.T) {
 	setupParam()
 	config.ProxyMode = true
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
 	// this is local random image, should be 404
@@ -220,7 +219,6 @@ func TestConvertProxyModeBad(t *testing.T) {
 	resp1, _ := requestToServer(url, app, curlUA, acceptWebP)
 	defer resp1.Body.Close()
 	assert.Equal(t, http.StatusNotFound, resp1.StatusCode)
-
 }
 
 func TestConvertProxyModeWork(t *testing.T) {
@@ -228,7 +226,7 @@ func TestConvertProxyModeWork(t *testing.T) {
 	config.ProxyMode = true
 	config.Config.ImgPath = "https://docs.webp.sh"
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
 	url := "http://127.0.0.1:3333/images/webp_server.jpg"
@@ -257,10 +255,10 @@ func TestConvertProxyImgMap(t *testing.T) {
 		"http://example.com":            "https://docs.webp.sh",
 	}
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
-	var testUrls = map[string]string{
+	testUrls := map[string]string{
 		"http://127.0.0.1:3333/webp_server.jpg":                              "image/webp",
 		"http://127.0.0.1:3333/2/inside.jpg":                                 "image/webp",
 		"http://127.0.0.1:3333/www.weird-path.com/images/webp_server.jpg":    "image/webp",
@@ -268,13 +266,13 @@ func TestConvertProxyImgMap(t *testing.T) {
 		"http://example.com//images/webp_server.jpg":                         "image/webp",
 	}
 
-	var testUrlsLegacy = map[string]string{
+	testUrlsLegacy := map[string]string{
 		"http://127.0.0.1:3333/webp_server.jpg":     "image/jpeg",
 		"http://127.0.0.1:3333/2/inside.jpg":        "image/jpeg",
 		"http://example.com/images/webp_server.jpg": "image/jpeg",
 	}
 
-	var testUrlsInvalid = map[string]string{
+	testUrlsInvalid := map[string]string{
 		"http://127.0.0.1:3333/3/does-not-exist.jpg":         "", // Dir mapped does not exist
 		"http://127.0.0.1:3333/www.weird-path.com/cover.jpg": "", // Host mapped, final URI invalid
 	}
@@ -313,10 +311,10 @@ func TestConvertProxyImgMapCWD(t *testing.T) {
 		"http://www.example.com": "https://docs.webp.sh",
 	}
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
-	var testUrls = map[string]string{
+	testUrls := map[string]string{
 		"http://127.0.0.1:3333/1/inside.jpg":            "image/webp",
 		"http://127.0.0.1:3333/2/webp_server.jpg":       "image/webp",
 		"http://127.0.0.1:3333/3/webp_server.jpg":       "image/webp",
@@ -335,7 +333,7 @@ func TestConvertBigger(t *testing.T) {
 	setupParam()
 	config.Config.Quality = 100
 
-	var app = fiber.New()
+	app := fiber.New()
 	app.Get("/*", Convert)
 
 	url := "http://127.0.0.1:3333/big.jpg"

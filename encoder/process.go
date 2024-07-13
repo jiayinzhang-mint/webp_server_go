@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"slices"
+
 	"webp_server_go/config"
 
 	"github.com/davidbyttow/govips/v2/vips"
@@ -107,7 +108,7 @@ func ResizeItself(raw, dest string, extraParams config.ExtraParams) {
 	log.Infof("Resize %s itself to %s", raw, dest)
 
 	// we need to create dir first
-	var err = os.MkdirAll(path.Dir(dest), 0755)
+	err := os.MkdirAll(path.Dir(dest), 0o755)
 	if err != nil {
 		log.Error(err.Error())
 	}
@@ -121,10 +122,10 @@ func ResizeItself(raw, dest string, extraParams config.ExtraParams) {
 	}
 	_ = resizeImage(img, extraParams)
 	if config.Config.StripMetadata {
-		img.RemoveMetadata()
+		_ = img.RemoveMetadata()
 	}
 	buf, _, _ := img.ExportNative()
-	_ = os.WriteFile(dest, buf, 0600)
+	_ = os.WriteFile(dest, buf, 0o600)
 	img.Close()
 }
 
