@@ -13,7 +13,8 @@
     "bmp",
     "svg",
     "heic",
-    "nef"
+    "nef",
+    "webp"
   ],
   "CONVERT_TYPES": [
     "webp"
