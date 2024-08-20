@@ -45,15 +45,17 @@ func Convert(c *fiber.Ctx) error {
 		proxyMode      = config.ProxyMode
 		mapMode        = false
 
-		width, _     = strconv.Atoi(c.Query("width"))      // Extra Params
-		height, _    = strconv.Atoi(c.Query("height"))     // Extra Params
-		maxHeight, _ = strconv.Atoi(c.Query("max_height")) // Extra Params
-		maxWidth, _  = strconv.Atoi(c.Query("max_width"))  // Extra Params
-		extraParams  = config.ExtraParams{
-			Width:     width,
-			Height:    height,
-			MaxWidth:  maxWidth,
-			MaxHeight: maxHeight,
+		width, _       = strconv.Atoi(c.Query("width"))                   // Extra Params
+		height, _      = strconv.Atoi(c.Query("height"))                  // Extra Params
+		maxHeight, _   = strconv.Atoi(c.Query("max_height"))              // Extra Params
+		maxWidth, _    = strconv.Atoi(c.Query("max_width"))               // Extra Params
+		blurMinAmpl, _ = strconv.ParseFloat(c.Query("blur_min_ampl"), 32) // Extra Params
+		extraParams    = config.ExtraParams{
+			Width:       width,
+			Height:      height,
+			MaxWidth:    maxWidth,
+			MaxHeight:   maxHeight,
+			BlurMinAmpl: blurMinAmpl,
 		}
 	)
 

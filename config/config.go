@@ -279,7 +279,7 @@ func LoadConfig() {
 }
 
 func parseImgMap(imgMap map[string]string) map[string]string {
-	var parsedImgMap = map[string]string{}
+	parsedImgMap := map[string]string{}
 	httpRegexpMatcher := regexp.MustCompile(HttpRegexp)
 	for uriMap, uriMapTarget := range imgMap {
 		if httpRegexpMatcher.Match([]byte(uriMap)) || strings.HasPrefix(uriMap, "/") {
@@ -294,10 +294,11 @@ func parseImgMap(imgMap map[string]string) map[string]string {
 }
 
 type ExtraParams struct {
-	Width     int // in px
-	Height    int // in px
-	MaxWidth  int // in px
-	MaxHeight int // in px
+	Width       int // in px
+	Height      int // in px
+	MaxWidth    int // in px
+	MaxHeight   int // in px
+	BlurMinAmpl float64
 }
 
 func switchProxyMode() {

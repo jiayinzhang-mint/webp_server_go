@@ -104,6 +104,16 @@ func resizeImage(img *vips.ImageRef, extraParams config.ExtraParams) error {
 	return nil
 }
 
+func blurImage(img *vips.ImageRef, extraParams config.ExtraParams) error {
+	if extraParams.BlurMinAmpl > 0 {
+		err := img.GaussianBlur(15, float64(extraParams.BlurMinAmpl))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func ResizeItself(raw, dest string, extraParams config.ExtraParams) {
 	log.Infof("Resize %s itself to %s", raw, dest)
 
@@ -159,6 +169,11 @@ func preProcessImage(img *vips.ImageRef, imageType string, extraParams config.Ex
 		return err
 	}
 	if config.Config.EnableExtraParams {
+		err = blurImage(img, extraParams)
+		if err != nil {
+			return err
+		}
+
 		err = resizeImage(img, extraParams)
 		if err != nil {
 			return err
