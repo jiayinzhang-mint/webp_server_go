@@ -32,7 +32,7 @@ func setupParam() {
 	// setup parameters here...
 	config.Config.ImgPath = "../pics"
 	config.Config.ExhaustPath = "../exhaust_test"
-	config.Config.AllowedTypes = []string{"jpg", "png", "jpeg", "bmp"}
+	config.Config.AllowedTypes = []string{"jpg", "png", "jpeg", "bmp", "heic", "avif"}
 	config.Config.MetadataPath = "../metadata"
 	config.Config.RemoteRawPath = "../remote-raw"
 	config.ProxyMode = false
@@ -128,6 +128,10 @@ func TestConvert(t *testing.T) {
 		"http://127.0.0.1:3333/dir1/inside.jpg":                 "image/webp",
 		"http://127.0.0.1:3333/%e5%a4%aa%e7%a5%9e%e5%95%a6.png": "image/webp",
 		"http://127.0.0.1:3333/太神啦.png":                         "image/webp",
+		// Source: https://filesamples.com/formats/heic
+		"http://127.0.0.1:3333/sample3.heic": "image/webp", // webp because browser does not support heic
+		// Source: https://raw.githubusercontent.com/link-u/avif-sample-images/refs/heads/master/kimono.avif
+		"http://127.0.0.1:3333/kimono.avif": "image/webp", // webp because browser does not support avif
 	}
 
 	testChromeAvifLink := map[string]string{
@@ -195,11 +199,56 @@ func TestConvertNotAllowed(t *testing.T) {
 	defer resp.Body.Close()
 	assert.Contains(t, string(data), "File extension not allowed")
 
+	// not allowed, but we have the file, this should return File extension not allowed
+	url = "http://127.0.0.1:3333/config.json"
+	resp, data = requestToServer(url, app, chromeUA, acceptWebP)
+	defer resp.Body.Close()
+	assert.Contains(t, string(data), "File extension not allowed")
+
 	// not allowed, random file
 	url = url + "hagdgd"
 	resp, data = requestToServer(url, app, chromeUA, acceptWebP)
 	defer resp.Body.Close()
 	assert.Contains(t, string(data), "File extension not allowed")
+}
+
+func TestConvertPassThrough(t *testing.T) {
+	setupParam()
+	config.Config.AllowedTypes = []string{"*"}
+	config.AllowAllExtensions = true
+
+	app := fiber.New()
+	app.Get("/*", Convert)
+
+	// Since AllowedTypes is *, we should be able to access config.json
+	url := "http://127.0.0.1:3333/config.json"
+	resp, data := requestToServer(url, app, chromeUA, acceptWebP)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Contains(t, string(data), "HOST")
+}
+
+func TestConvertPassThroughWithRemoteBackend(t *testing.T) {
+	setupParam()
+	config.Config.AllowedTypes = []string{"*"}
+	config.Config.ImgPath = "https://docs.webp.sh"
+	config.ProxyMode = true
+	config.AllowAllExtensions = true
+
+	app := fiber.New()
+	app.Get("/*", Convert)
+
+	// This should send request to https://docs.webp.sh/sw.js and render this file
+	url := "http://127.0.0.1:3333/sw.js"
+	resp, data := requestToServer(url, app, chromeUA, acceptWebP)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// TODO: No idea why this is not working, it shows text/html instead of application/javascript
+	// assert.Equal(t, "application/javascript", resp.Header.Get("Content-Type"))
+
+	assert.Contains(t, string(data), "addEventListener")
 }
 
 func TestConvertProxyModeBad(t *testing.T) {
@@ -243,13 +292,63 @@ func TestConvertProxyModeWork(t *testing.T) {
 	assert.Equal(t, "image/jpeg", helper.GetContentType(data))
 }
 
+func TestConvertProxyModeNonImageWork(t *testing.T) {
+	setupParam()
+	config.ProxyMode = true
+	config.Config.AllowedTypes = []string{"*"}
+	config.AllowAllExtensions = true
+	config.Config.ImgPath = "https://docs.webp.sh"
+
+	app := fiber.New()
+	app.Get("/*", Convert)
+
+	url := "http://127.0.0.1:3333/sw.js?version=13"
+
+	resp, _ := requestToServer(url, app, chromeUA, acceptWebP)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "text/javascript; charset=utf-8", resp.Header.Get("Content-Type"))
+
+	url = "http://127.0.0.1:3333/sw.js"
+
+	resp, _ = requestToServer(url, app, chromeUA, acceptWebP)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "text/javascript; charset=utf-8", resp.Header.Get("Content-Type"))
+}
+
+func TestConvertMapProxyModeWork(t *testing.T) {
+	setupParam()
+	config.ProxyMode = true
+	config.Config.ImageMap = map[string]string{
+		"/": "https://docs.webp.sh",
+	}
+
+	app := fiber.New()
+	app.Get("/*", Convert)
+
+	url := "http://127.0.0.1:3333/images/webp_server.jpg"
+
+	resp, data := requestToServer(url, app, chromeUA, acceptWebP)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "image/webp", helper.GetContentType(data))
+
+	// test proxyMode with Safari
+	resp, data = requestToServer(url, app, safariUA, acceptLegacy)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "image/jpeg", helper.GetContentType(data))
+}
+
 func TestConvertProxyImgMap(t *testing.T) {
 	setupParam()
 	config.ProxyMode = false
 	config.Config.ImageMap = map[string]string{
 		"/2":                            "../pics/dir1",
-		"/3":                            "../pics3",             // Invalid path, does not exists
-		"www.invalid-path.com":          "https://docs.webp.sh", // Invalid, it does not start with '/'
+		"/3":                            "../pics3",                 // Invalid path, does not exists
+		"/s3":                           "https://d1.awsstatic.com", // AWS S3 bucket for testing query
+		"www.invalid-path.com":          "https://docs.webp.sh",     // Invalid, it does not start with '/'
 		"/www.weird-path.com":           "https://docs.webp.sh",
 		"/www.even-more-werid-path.com": "https://docs.webp.sh/images",
 		"http://example.com":            "https://docs.webp.sh",
@@ -264,6 +363,8 @@ func TestConvertProxyImgMap(t *testing.T) {
 		"http://127.0.0.1:3333/www.weird-path.com/images/webp_server.jpg":    "image/webp",
 		"http://127.0.0.1:3333/www.even-more-werid-path.com/webp_server.jpg": "image/webp",
 		"http://example.com//images/webp_server.jpg":                         "image/webp",
+
+		"http://127.0.0.1:3333/s3/s3-pdp-redesign/product-page-diagram_Amazon-S3_HIW%402x.ee85671fe5c9ccc2ee5c5352a769d7b03d7c0f16.png": "image/webp",
 	}
 
 	testUrlsLegacy := map[string]string{
@@ -329,7 +430,7 @@ func TestConvertProxyImgMapCWD(t *testing.T) {
 	}
 }
 
-func TestConvertBigger(t *testing.T) {
+func TestConvertedFileIsBigger(t *testing.T) {
 	setupParam()
 	config.Config.Quality = 100
 

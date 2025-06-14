@@ -43,25 +43,42 @@ const (
 )
 
 var (
-	ConfigPath     string
-	Jobs           int
-	DumpSystemd    bool
-	DumpConfig     bool
-	ShowVersion    bool
-	ProxyMode      bool
-	Prefetch       bool
-	Config         = NewWebPConfig()
-	Version        = "0.12.0"
-	WriteLock      = cache.New(5*time.Minute, 10*time.Minute)
-	ConvertLock    = cache.New(5*time.Minute, 10*time.Minute)
-	LocalHostAlias = "local"
-	RemoteCache    *cache.Cache
+	ConfigPath          string
+	Jobs                int
+	Verbosity           int
+	DumpSystemd         bool
+	DumpConfig          bool
+	ShowVersion         bool
+	ProxyMode           bool
+	AllowAllExtensions  bool
+	Prefetch            bool // Prefech in go-routine, with WebP Server Go launch normally
+	PrefetchForeground  bool // Standalone prefetch, prefetch and exit
+	AllowNonImage       bool
+	Config              = NewWebPConfig()
+	Version             = "0.13.7"
+	WriteLock           = cache.New(5*time.Minute, 10*time.Minute)
+	ConvertLock         = cache.New(5*time.Minute, 10*time.Minute)
+	LocalHostAlias      = "local"
+	RemoteCache         *cache.Cache
+	DefaultAllowedTypes = []string{"jpg", "png", "jpeg", "bmp", "gif", "svg", "nef", "heic", "webp", "avif", "jxl"} // Default allowed image types
 )
+
+type ImageMeta struct {
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	Format     string `json:"format"`
+	Size       int    `json:"size"`
+	NumPages   int    `json:"num_pages"`
+	Blurhash   string `json:"blurhash"`
+	Colorspace string `json:"colorspace"`
+}
 
 type MetaFile struct {
 	Id       string `json:"id"`       // hash of below path️, also json file name id.webp
 	Path     string `json:"path"`     // local: path with width and height, proxy: full url
 	Checksum string `json:"checksum"` // hash of original file or hash(etag). Use this to identify changes
+
+	ImageMeta
 }
 
 type WebpConfig struct {
@@ -93,12 +110,15 @@ type WebpConfig struct {
 }
 
 func NewWebPConfig() *WebpConfig {
+	// Copy DefaultAllowedTypes to avoid modification
+	defaultAllowedTypes := make([]string, len(DefaultAllowedTypes))
+	copy(defaultAllowedTypes, DefaultAllowedTypes)
 	return &WebpConfig{
 		Host:          "0.0.0.0",
 		Port:          "3333",
 		ImgPath:       "./pics",
 		Quality:       80,
-		AllowedTypes:  []string{"jpg", "png", "jpeg", "bmp", "gif", "svg", "nef", "heic", "webp"},
+		AllowedTypes:  defaultAllowedTypes,
 		ConvertTypes:  []string{"webp"},
 		ImageMap:      map[string]string{},
 		ExhaustPath:   "./exhaust",
@@ -123,8 +143,15 @@ func NewWebPConfig() *WebpConfig {
 
 func init() {
 	flag.StringVar(&ConfigPath, "config", "config.json", "/path/to/config.json. (Default: ./config.json)")
-	flag.BoolVar(&Prefetch, "prefetch", false, "Prefetch and convert image to WebP format.")
+	flag.BoolVar(&Prefetch, "prefetch", false, "Prefetch and convert images to optimized format, with WebP Server Go launch normally")
+	flag.BoolVar(&PrefetchForeground, "prefetch-foreground", false, "Prefetch and convert image to optimized format in foreground, prefetch and exit")
 	flag.IntVar(&Jobs, "jobs", runtime.NumCPU(), "Prefetch thread, default is all.")
+	// 0 = silent (no log messages)
+	// 1 = error (error messages only)
+	// 2 = warn (error messages and warnings only)
+	// 3 = info (error messages, warnings and normal activity logs)
+	// 4 = debug (all info plus additional messages for debugging)
+	flag.IntVar(&Verbosity, "verbosity", 3, "Log level(0: silent, 1: error, 2: warn, 3:info, 4: debug), default to 3: info")
 	flag.BoolVar(&DumpConfig, "dump-config", false, "Print sample config.json.")
 	flag.BoolVar(&ShowVersion, "V", false, "Show version information.")
 }
@@ -137,8 +164,6 @@ func LoadConfig() {
 	decoder := json.NewDecoder(jsonObject)
 	_ = decoder.Decode(&Config)
 	_ = jsonObject.Close()
-	switchProxyMode()
-	Config.ImageMap = parseImgMap(Config.ImageMap)
 
 	if slices.Contains(Config.ConvertTypes, "webp") {
 		Config.EnableWebP = true
@@ -273,6 +298,12 @@ func LoadConfig() {
 			Config.MaxCacheSize = maxCacheSize
 		}
 	}
+
+	if Config.AllowedTypes[0] == "*" {
+		AllowAllExtensions = true
+	}
+	switchProxyMode()
+	Config.ImageMap = parseImgMap(Config.ImageMap)
 
 	log.Debugln("Config init complete")
 	log.Debugln("Config", Config)
