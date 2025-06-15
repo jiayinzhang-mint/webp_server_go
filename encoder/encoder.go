@@ -75,7 +75,7 @@ func ConvertFilter(rawPath, jxlPath, avifPath, webpPath string, extraParams conf
 		wg.Done()
 	}
 
-	if !helper.ImageExists(webpPath) && config.Config.EnableWebP && supportedFormats["webp"] {
+	if (extraParams.BlurMinAmpl != 0 || !helper.ImageExists(webpPath)) && config.Config.EnableWebP && supportedFormats["webp"] {
 		go func() {
 			err := convertImage(rawPath, webpPath, "webp", extraParams)
 			if err != nil {
@@ -145,7 +145,7 @@ func convertImage(rawPath, optimizedPath, imageType string, extraParams config.E
 
 	switch imageType {
 	case "webp":
-		if imageFormat == vips.ImageTypeWEBP {
+		if imageFormat == vips.ImageTypeWEBP && extraParams.BlurMinAmpl == 0 {
 			log.Infof("Image is already in WebP format, copying %s to %s", rawPath, optimizedPath)
 			return helper.CopyFile(rawPath, optimizedPath)
 		} else {

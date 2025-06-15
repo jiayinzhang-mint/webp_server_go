@@ -5,11 +5,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
-	"webp_server_go/config"
 
-	"slices"
+	"webp_server_go/config"
 
 	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/h2non/filetype"
@@ -199,7 +199,7 @@ func CopyFile(src, dst string) error {
 	// Read all content of src to data
 	data, _ := os.ReadFile(src)
 	// Write data to dst
-	return os.WriteFile(dst, data, 0644)
+	return os.WriteFile(dst, data, 0o644)
 }
 
 func FindSmallestFiles(files []string) string {
